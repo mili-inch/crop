@@ -277,7 +277,7 @@
     backBfile.addEventListener('change', function (e) {
         loadLocalImage(e, backBresult, "back_b");
     }, false);
-
+    const canvas = document.getElementById("card");
     const onSubmit = function (e) {
         let radio = document.getElementsByName("mode");
         let selected = "";
@@ -299,7 +299,6 @@
         }
         const width = images.card_a.naturalWidth;
         const height = images.card_a.naturalHeight;
-        const canvas = document.getElementById("card");
         const ctx = canvas.getContext("2d");
         canvas.width = width;
         canvas.height = height;
@@ -314,4 +313,17 @@
         }
     };
     document.getElementById("bash").addEventListener("click", onSubmit, false);
+    let downloadLink = document.getElementById('download_link');
+    let button = document.getElementById('download');
+    let filename = "leaguecard.png"
+    button.addEventListener('click', function(){
+        if (canvas.msToBlob) {
+            let blob = canvas.msToBlob();
+            window.navigator.msSaveBlob(blob, filename);
+        } else {
+            downloadLink.href = canvas.toDataURL('image/png');
+            downloadLink.download = filename;
+            downloadLink.click();
+        }
+    });
 })();
