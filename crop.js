@@ -107,7 +107,6 @@
                 if (imageData.data[i] == 255) {
                     for (let dx = -degree; dx < degree + 1; dx++) {
                         for (let dy = -degree; dy < degree + 1; dy++) {
-                            console.log()
                             let l = (x + dx + (y + dy) * width) * 4;
                             imageData_dst.data[l] = 255;
                             imageData_dst.data[l + 1] = 255;
@@ -257,7 +256,7 @@
             r = 13;
         }
         const mask = getLeagueCardMask(ctx, width, height, x, y, w, h, r, color);
-        const masked = getMaskedImageData(ctx, card_a, mask, width, height);
+        const masked = getMaskedImageData(ctx, createImageData(ctx, card_a, width, height), mask, width, height);
         const trimed = getTrimedImageData(ctx, masked, width, height, x, y, w, h);
         ctx.canvas.width = w;
         ctx.canvas.height = h;
@@ -337,7 +336,7 @@
             maskCard(ctx, images.card_a, images.card_b, images.back_a, images.back_b, width, height);
         }
         if (selected == "trim") {
-            trimCard(ctx, createImageData(ctx, images.card_a, width, height), width, height);
+            trimCard(ctx, images.card_a, width, height);
         }
     };
     document.getElementById("bash").addEventListener("click", onSubmit, false);
