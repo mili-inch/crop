@@ -170,45 +170,8 @@
         }
         return imageData_dst;
     };
-    const cropCard = function (ctx, card_a, card_b, back_a, back_b, width, height) {
-        const difference_card = compoundImageData(ctx, difference, createImageData(ctx, card_a, width, height), createImageData(ctx, card_b, width, height), width, height);
-        const difference_back = compoundImageData(ctx, difference, createImageData(ctx, back_a, width, height), createImageData(ctx, back_b, width, height), width, height);
-        const division_ctob = compoundImageData(ctx, division, difference_card, difference_back, width, height);
-        const division_btoc = compoundImageData(ctx, division, difference_back, difference_card, width, height);
-        const hardlight_dtod = compoundImageData(ctx, hardlight, division_btoc, division_ctob, width, height);
-        const alphaMask = getInversedImageData(ctx, getGrayImageData(ctx, division_btoc, width, height), width, height);
-        const colorDifferenceMask = getColorSelectiveMask(ctx, difference_card, width, height);
-        const alphaColorDifferenceMask = getMaskedImageData(ctx, getPlaneImageData(ctx, width, height, 255, 255, 255, 255), colorDifferenceMask, width, height);
-        const coveredAlphaMask = compoundImageDataNormal(ctx, alphaColorDifferenceMask, alphaMask, width, height);
-        const result = getMaskedImageData(ctx, createImageData(ctx, card_a, width, height), coveredAlphaMask, width, height);
-        ctx.putImageData(result, 0, 0);
-    };
-    const maskCard = function (ctx, card_a, card_b, back_a, back_b, width, height) {
-        const difference_card = compoundImageData(ctx, difference, createImageData(ctx, card_a, width, height), createImageData(ctx, card_b, width, height), width, height);
-        const difference_back = compoundImageData(ctx, difference, createImageData(ctx, back_a, width, height), createImageData(ctx, back_b, width, height), width, height);
-        const division_ctob = compoundImageData(ctx, division, difference_card, difference_back, width, height);
-        const division_btoc = compoundImageData(ctx, division, difference_back, difference_card, width, height);
-        const hardlight_dtod = compoundImageData(ctx, hardlight, division_btoc, division_ctob, width, height);
-        const alphaMask = getInversedImageData(ctx, getGrayImageData(ctx, hardlight_dtod, width, height), width, height);
-        const colorDifferenceMask = getColorSelectiveMask(ctx, difference_card, width, height);
-        const alphaColorDifferenceMask = getMaskedImageData(ctx, getPlaneImageData(ctx, width, height, 255, 255, 255, 255), colorDifferenceMask, width, height);
-        const coveredAlphaMask = compoundImageDataNormal(ctx, alphaColorDifferenceMask, alphaMask, width, height);
-        ctx.putImageData(coveredAlphaMask, 0, 0);
-    };
-    const trimCard = function (ctx, card_a, width, height) {
-        let x = 40;
-        let y = 36;
-        let w = 800;
-        let h = 960;
-        let r = 18;
-        let color = "#FFFFFF";
-        if (width == 1280) {
-            x = 27;
-            y = 24;
-            w = 533;
-            h = 640;
-            r = 12;
-        }
+    //角丸マスク生成
+    const getLeagueCardMask = function (ctx, width, height, x, y, w, h, r, color) {
         function drawsq(x, y, w, h, r, color) {
             ctx.beginPath();
             ctx.lineWidth = 1;
@@ -227,13 +190,78 @@
         ctx.fillStyle = "#000000";
         ctx.fillRect(0, 0, width, height);
         drawsq(x, y, w, h, r, color);
-        const mask = ctx.getImageData(0, 0, width, height);
-        const trimed = getMaskedImageData(ctx, createImageData(ctx, card_a, width, height), mask, width, height);
+        return ctx.getImageData(0, 0, width, height);
+    }
+    //トリミング
+    const getTrimedImageData = function (ctx, imageData, width, height, dx, dy, dw, dh) {
+        let x, y, i, j;
+        let imageData_dst = ctx.createImageData(dw, dh);
+        for (y = dy; y < dy + dh + 1; y++) {
+            for (x = dx; x < dx + dw + 1; x++) {
+                i = (x + y * width) * 4;
+                j = (x - dx + (y - dy) * dw) * 4;
+                imageData_dst.data[j] = imageData.data[i];
+                imageData_dst.data[j + 1] = imageData.data[i + 1];
+                imageData_dst.data[j + 2] = imageData.data[i + 2];
+                imageData_dst.data[j + 3] = imageData.data[i + 3];
+            }
+        }
+        return imageData_dst;
+    }
+
+    const cropCard = function (ctx, card_a, card_b, back_a, back_b, width, height) {
+        const difference_card = compoundImageData(ctx, difference, createImageData(ctx, card_a, width, height), createImageData(ctx, card_b, width, height), width, height);
+        const difference_back = compoundImageData(ctx, difference, createImageData(ctx, back_a, width, height), createImageData(ctx, back_b, width, height), width, height);
+        const division_ctob = compoundImageData(ctx, division, difference_card, difference_back, width, height);
+        const division_btoc = compoundImageData(ctx, division, difference_back, difference_card, width, height);
+        //const hardlight_dtod = compoundImageData(ctx, hardlight, division_btoc, division_ctob, width, height);
+        const alphaMask = getInversedImageData(ctx, getGrayImageData(ctx, division_btoc, width, height), width, height);
+        const colorDifferenceMask = getColorSelectiveMask(ctx, difference_card, width, height);
+        const expandedDiffMask = getExpandedMask(ctx, colorDifferenceMask, width, height, 2);
+        const expandedDiffMaskInv = getInversedImageData(ctx, expandedDiffMask, width, height);
+        const alphaexpandedDiffMask = getMaskedImageData(ctx, getPlaneImageData(ctx, width, height, 0, 0, 0, 255), expandedDiffMaskInv, width, height);
+        const alphaDiffMask = getMaskedImageData(ctx, getPlaneImageData(ctx, width, height, 255, 255, 255, 255), colorDifferenceMask, width, height);
+        const coveredAlphaMask = compoundImageDataNormal(ctx, alphaexpandedDiffMask, alphaMask, width, height);
+        const resultMask = compoundImageDataNormal(ctx, alphaDiffMask, coveredAlphaMask, width, height);
+        const result = getMaskedImageData(ctx, createImageData(ctx, card_a, width, height), resultMask, width, height);
+        ctx.putImageData(result, 0, 0);
+    };
+    const maskCard = function (ctx, card_a, card_b, back_a, back_b, width, height) {
+        const difference_card = compoundImageData(ctx, difference, createImageData(ctx, card_a, width, height), createImageData(ctx, card_b, width, height), width, height);
+        const difference_back = compoundImageData(ctx, difference, createImageData(ctx, back_a, width, height), createImageData(ctx, back_b, width, height), width, height);
+        const division_ctob = compoundImageData(ctx, division, difference_card, difference_back, width, height);
+        const division_btoc = compoundImageData(ctx, division, difference_back, difference_card, width, height);
+        //const hardlight_dtod = compoundImageData(ctx, hardlight, division_btoc, division_ctob, width, height);
+        const alphaMask = getInversedImageData(ctx, getGrayImageData(ctx, division_btoc, width, height), width, height);
+        const colorDifferenceMask = getColorSelectiveMask(ctx, difference_card, width, height);
+        const expandedDiffMask = getExpandedMask(ctx, colorDifferenceMask, width, height, 2);
+        const expandedDiffMaskInv = getInversedImageData(ctx, expandedDiffMask, width, height);
+        const alphaexpandedDiffMask = getMaskedImageData(ctx, getPlaneImageData(ctx, width, height, 0, 0, 0, 255), expandedDiffMaskInv, width, height);
+        const alphaDiffMask = getMaskedImageData(ctx, getPlaneImageData(ctx, width, height, 255, 255, 255, 255), colorDifferenceMask, width, height);
+        const coveredAlphaMask = compoundImageDataNormal(ctx, alphaexpandedDiffMask, alphaMask, width, height);
+        const resultMask = compoundImageDataNormal(ctx, alphaDiffMask, coveredAlphaMask, width, height);
+        ctx.putImageData(resultMask, 0, 0);
+    };
+    const trimCard = function (ctx, card_a, width, height) {
+        let x = 40;
+        let y = 36;
+        let w = 800;
+        let h = 960;
+        let r = 19;
+        let color = "#FFFFFF";
+        if (width == 1280) {
+            x = 27;
+            y = 24;
+            w = 533;
+            h = 640;
+            r = 13;
+        }
+        const mask = getLeagueCardMask(ctx, width, height, x, y, w, h, r, color);
+        const masked = getMaskedImageData(ctx, card_a, mask, width, height);
+        const trimed = getTrimedImageData(ctx, masked, width, height, x, y, w, h);
         ctx.canvas.width = w;
         ctx.canvas.height = h;
-        createImageBitmap(trimed).then(function (bitmap) {
-            ctx.drawImage(bitmap, x, y, w, h, 0, 0, w, h);
-        });
+        ctx.putImageData(trimed, 0, 0);
     }
 
     let images = {};
@@ -282,7 +310,7 @@
         let radio = document.getElementsByName("mode");
         let selected = "";
         for (let i = 0; i < radio.length; i++) {
-            if (radio[i].checked) { //(color2[i].checked === true)と同じ
+            if (radio[i].checked) {
                 selected = radio[i].value;
                 break;
             }
@@ -309,14 +337,14 @@
             maskCard(ctx, images.card_a, images.card_b, images.back_a, images.back_b, width, height);
         }
         if (selected == "trim") {
-            trimCard(ctx, images.card_a, width, height);
+            trimCard(ctx, createImageData(ctx, images.card_a, width, height), width, height);
         }
     };
     document.getElementById("bash").addEventListener("click", onSubmit, false);
     let downloadLink = document.getElementById('download_link');
     let button = document.getElementById('download');
     let filename = "leaguecard.png"
-    button.addEventListener('click', function(){
+    button.addEventListener('click', function () {
         if (canvas.msToBlob) {
             let blob = canvas.msToBlob();
             window.navigator.msSaveBlob(blob, filename);
