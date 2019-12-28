@@ -1,23 +1,17 @@
-﻿<link rel="stylesheet" type="text/css" href="style.css">
+﻿<head>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<link rel="stylesheet" type="text/css" href="style.css">
 <div class="upload">
-    <div>
-        <input type="file" name="card_a" id="card_a">
-        <div id="preview_card_a"></div>
-        <input type="file" name="card_b" id="card_b">
-        <div id="preview_card_b"></div>
-        <input type="file" name="back_a" id="back_a">
-        <div id="preview_back_a"></div>
-        <input type="file" name="back_b" id="back_b">
-        <div id="preview_back_b"></div>
-    </div>
-    <input type="radio" name="mode" value="crop" checked="checked">透過
+    <input type="file" name="button_upload" id="button_upload" multiple="multiple">
+    <div id="previews"></div>
+    <input type="radio" name="mode" value="trim" checked="checked">カード化
+    <input type="radio" name="mode" value="crop">透過
     <input type="radio" name="mode" value="mask">マスク
-    <input type="radio" name="mode" value="trim">カード化
     <button type="button" id="bash">実行</button>
     <button type="button" id="download">ダウンロード</button>
     <a id="download_link"></a>
 </div>
-<div>
-    <canvas id="card" width="1920" height="1080"></canvas>
+<div id="results">
 </div>
 <script type="text/javascript" src="crop.js"></script>
