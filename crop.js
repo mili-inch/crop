@@ -270,7 +270,8 @@
         const alphaDiffMask = getMaskedImageData(ctx, getPlaneImageData(ctx, width, height, 255, 255, 255, 255), colorDifferenceMask, width, height);
         const coveredAlphaMask = compoundImageDataNormal(ctx, alphaexpandedDiffMask, alphaMask, width, height);
         const resultMask = compoundImageDataNormal(ctx, alphaDiffMask, coveredAlphaMask, width, height);
-        return resultMask;
+        const resultMaskInverse = getInversedImageData(ctx, resultMask, width,height);
+        return resultMaskInverse;
     };
     const getCardSizeMaskedImageData = function (ctx, imageData, w, h, r) {
         let color = "#FFFFFF";
