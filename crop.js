@@ -327,12 +327,13 @@
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext("2d");
-                const trimedImageData = getTrimedImageData(ctx, createImageData(ctx, image, width, height), width, height, x, y,w,h)
+                const trimedImageData = getTrimedImageData(ctx, createImageData(ctx, image, width, height), width, height, x, y, w, h)
                 const cardImageData = getCardSizeMaskedImageData(ctx, trimedImageData, w, h, r);
                 canvas.width = w;
                 canvas.height = h;
                 ctx.putImageData(cardImageData, 0, 0);
                 frame_results.appendChild(canvas);
+                addDownloadLink(frame_results, canvas);
             }
         }
         //const trimed = getTrimedImageData(ctx, imageData, width, height, x, y, w, h);
@@ -360,6 +361,7 @@
                 const croppedImageData = getCroppedImageData(ctx, card_a, card_b, back_a, back_b, width, height);
                 ctx.putImageData(croppedImageData, 0, 0);
                 frame_results.appendChild(canvas);
+                addDownloadLink(frame_results, canvas);
             }
         }
         if (selected == "mask") {
@@ -374,7 +376,7 @@
             frame_results.textContent = null;
             const width = images[0].naturalWidth;
             const height = images[0].naturalHeight;
-            for(let i = 2; i + 1 < images.length; i += 2) {
+            for (let i = 2; i + 1 < images.length; i += 2) {
                 const canvas = document.createElement("canvas");
                 canvas.width = width;
                 canvas.height = height;
@@ -386,6 +388,7 @@
                 const mask = getMaskImageData(ctx, card_a, card_b, back_a, back_b, width, height)
                 ctx.putImageData(mask, 0, 0);
                 frame_results.appendChild(canvas);
+                addDownloadLink(frame_results, canvas);
             }
             /*ctx_r.putImageData(getColorFilteredImageData(ctx_r, mask, 0, width, height), 0, 0);
             ctx_g.putImageData(getColorFilteredImageData(ctx_g, mask, 1, width, height), 0, 0);
@@ -393,17 +396,23 @@
         }
     };
     document.getElementById("bash").addEventListener("click", onSubmit, false);
-    let downloadLink = document.getElementById('download_link');
-    let button = document.getElementById('download');
-    let filename = "leaguecard.png"
-    button.addEventListener('click', function () {
-        if (canvas.msToBlob) {
-            let blob = canvas.msToBlob();
-            window.navigator.msSaveBlob(blob, filename);
-        } else {
-            downloadLink.href = canvas.toDataURL('image/png');
-            downloadLink.download = filename;
-            downloadLink.click();
-        }
-    });
+
+    const addDownloadLink = (parent, canvas) => {
+        const link_download = document.createElement("a");
+        const button_download = document.createElement("button");
+        button_download.textContent = "ダウンロード";
+        const filename = "leaguecard.png";
+        button_download.addEventListener("click", function () {
+            if (canvas.msToBlob) {
+                let blob = canvas.msToBlob();
+                window.navigator.msSaveBlob(blob, filename);
+            } else {
+                link_download.href = canvas.toDataURL('image/png');
+                link_download.download = filename;
+                link_download.click();
+            }
+        });
+        parent.appendChild(link_download);
+        parent.appendChild(button_download);
+    }
 })();
