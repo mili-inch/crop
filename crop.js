@@ -242,9 +242,7 @@
     const getCroppedImageData = function (ctx, card_a, card_b, back_a, back_b, width, height) {
         const difference_card = compoundImageData(ctx, difference, card_a, card_b, width, height);
         const difference_back = compoundImageData(ctx, difference, back_a, back_b, width, height);
-        const division_ctob = compoundImageData(ctx, division, difference_card, difference_back, width, height);
         const division_btoc = compoundImageData(ctx, division, difference_back, difference_card, width, height);
-        //const hardlight_dtod = compoundImageData(ctx, hardlight, division_btoc, division_ctob, width, height);
         const alphaMask = getInversedImageData(ctx, getGrayImageData(ctx, division_btoc, width, height), width, height);
         const colorDifferenceMask = getColorSelectiveMask(ctx, difference_card, width, height);
         const expandedDiffMask = getExpandedMask(ctx, colorDifferenceMask, width, height, 2);
@@ -259,10 +257,8 @@
     const getMaskImageData = function (ctx, card_a, card_b, back_a, back_b, width, height) {
         const difference_card = compoundImageData(ctx, difference, card_a, card_b, width, height);
         const difference_back = compoundImageData(ctx, difference, back_a, back_b, width, height);
-        const division_ctob = compoundImageData(ctx, division, difference_card, difference_back, width, height);
         const division_btoc = compoundImageData(ctx, division, difference_back, difference_card, width, height);
-        //const hardlight_dtod = compoundImageData(ctx, hardlight, division_btoc, division_ctob, width, height);
-        const alphaMask = getInversedImageData(ctx, getGrayImageData(ctx, division_btoc, width, height), width, height);
+        const alphaMask = getInversedImageData(ctx, division_btoc, width, height);
         const colorDifferenceMask = getColorSelectiveMask(ctx, difference_card, width, height);
         const expandedDiffMask = getExpandedMask(ctx, colorDifferenceMask, width, height, 2);
         const expandedDiffMaskInv = getInversedImageData(ctx, expandedDiffMask, width, height);
@@ -271,7 +267,7 @@
         const coveredAlphaMask = compoundImageDataNormal(ctx, alphaexpandedDiffMask, alphaMask, width, height);
         const resultMask = compoundImageDataNormal(ctx, alphaDiffMask, coveredAlphaMask, width, height);
         const resultMaskInverse = getInversedImageData(ctx, resultMask, width,height);
-        return resultMaskInverse;
+        return alphaMask;
     };
     const getCardSizeMaskedImageData = function (ctx, imageData, w, h, r) {
         let color = "#FFFFFF";
@@ -285,8 +281,8 @@
     const buttons_mode = document.getElementsByName("mode");
     const frame_results = document.getElementById("results");
 
-    button_upload.addEventListener('change', function (e) {
-        for (let fileData of e.target.files) {
+    const onFileSelected = function (files) {
+        for (let fileData of files) {
             if (!fileData.type.match('image.*')) {
                 alert('画像を選択してください');
                 return;
@@ -295,11 +291,26 @@
             reader.onload = function () {
                 const img = document.createElement('img');
                 img.src = reader.result;
+                img.addEventListener("click", function() {
+                    this.remove();
+                })
                 frame_previews.appendChild(img);
             }
             reader.readAsDataURL(fileData);
         }
+    }
+
+    button_upload.addEventListener('change', function (e) {
+        e.preventDefault();
+        onFileSelected(e.target.files);
     }, false);
+    document.addEventListener("dragover", function (e) {
+        e.preventDefault();
+    });
+    document.addEventListener("drop", function (e) {
+        e.preventDefault();
+        onFileSelected(e.dataTransfer.files);
+    });
 
     const onSubmit = function (e) {
         let selected = "";
@@ -340,7 +351,7 @@
         //const trimed = getTrimedImageData(ctx, imageData, width, height, x, y, w, h);
         if (selected == "crop") {
             if (images.length < 4 || images.length % 2 != 0) {
-                alert("画像の数が不正です カードを偶数枚と背景を二枚指定してください");
+                alert("画像の数が不正です 背景を二枚とカードを偶数枚指定してください");
                 return;
             }
             if (!images.some(x => x.naturalWidth == images[0].naturalWidth)) {
@@ -367,7 +378,7 @@
         }
         if (selected == "mask") {
             if (images.length < 4 || images.length % 2 != 0) {
-                alert("画像の数が不正です カードを偶数枚と背景を二枚指定してください");
+                alert("画像の数が不正です 背景を二枚とカードを偶数枚指定してください");
                 return;
             }
             if (!images.some(x => x.naturalWidth == images[0].naturalWidth)) {
