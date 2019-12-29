@@ -266,7 +266,7 @@
         const alphaDiffMask = getMaskedImageData(ctx, getPlaneImageData(ctx, width, height, 255, 255, 255, 255), colorDifferenceMask, width, height);
         const coveredAlphaMask = compoundImageDataNormal(ctx, alphaexpandedDiffMask, alphaMask, width, height);
         const resultMask = compoundImageDataNormal(ctx, alphaDiffMask, coveredAlphaMask, width, height);
-        const resultMaskInverse = getInversedImageData(ctx, resultMask, width,height);
+        const resultMaskInverse = getInversedImageData(ctx, resultMask, width, height);
         return alphaMask;
     };
     const getCardSizeMaskedImageData = function (ctx, imageData, w, h, r) {
@@ -281,6 +281,9 @@
     const buttons_mode = document.getElementsByName("mode");
     const frame_results = document.getElementById("results");
 
+    let dragSrc;
+    let dragDst;
+
     const onFileSelected = function (files) {
         for (let fileData of files) {
             if (!fileData.type.match('image.*')) {
@@ -291,10 +294,28 @@
             reader.onload = function () {
                 const img = document.createElement('img');
                 img.src = reader.result;
-                img.addEventListener("click", function() {
-                    this.remove();
-                })
                 frame_previews.appendChild(img);
+                img.addEventListener("click", function () {
+                    this.remove();
+                });
+                img.addEventListener("dragenter", function () {
+                    if(dragSrc) {
+                        this.style = "border-left:solid 5px blue;";
+                        dragDst = this;
+                    }
+                });
+                img.addEventListener("dragleave", function () {
+                    this.style = "";
+                });
+                img.addEventListener("dragstart", function () {
+                    dragSrc = this;
+                });
+                img.addEventListener("dragend", function () {
+                    dragSrc.parentNode.insertBefore(dragSrc, dragDst);
+                    dragDst.style = "";
+                    dragSrc = null;
+                    dragDst = null;
+                });
             }
             reader.readAsDataURL(fileData);
         }
