@@ -299,20 +299,25 @@
                     this.remove();
                 });
                 img.addEventListener("dragenter", function () {
-                    if(dragSrc) {
+                    if (dragSrc) {
                         this.style = "border-left:solid 5px blue;";
                         dragDst = this;
                     }
                 });
                 img.addEventListener("dragleave", function () {
                     this.style = "";
+                    if (dragDst == this) {
+                        dragDst = null;
+                    }
                 });
                 img.addEventListener("dragstart", function () {
                     dragSrc = this;
                 });
                 img.addEventListener("dragend", function () {
-                    dragSrc.parentNode.insertBefore(dragSrc, dragDst);
-                    dragDst.style = "";
+                    if (dragSrc && dragDst) {
+                        dragSrc.parentNode.insertBefore(dragSrc, dragDst);
+                        dragDst.style = "";
+                    }
                     dragSrc = null;
                     dragDst = null;
                 });
