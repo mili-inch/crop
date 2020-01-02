@@ -14,9 +14,17 @@
     const addition = function (pixel_a, pixel_b) {
         return clamp(pixel_a + pixel_b, 0, 255);
     }
+    //減算
+    const subtraction = function (pixel_a, pixel_b) {
+        return clamp(pixel_a - pixel_b, 0, 255);
+    }
     //差の絶対値
     const difference = function (pixel_a, pixel_b) {
         return clamp(Math.abs(pixel_a - pixel_b), 0, 255);
+    }
+    //乗算
+    const multiply = function (pixel_a, pixel_b) {
+        return clamp(Math.round(pixel_a * pixel_b / 255), 0, 255);
     }
     //除算
     const division = function (pixel_a, pixel_b) {
@@ -243,7 +251,8 @@
         const difference_card = compoundImageData(ctx, difference, card_a, card_b, width, height);
         const difference_back = compoundImageData(ctx, difference, back_a, back_b, width, height);
         const division_btoc = compoundImageData(ctx, division, difference_back, difference_card, width, height);
-        const alphaMask = getInversedImageData(ctx, getGrayImageData(ctx, division_btoc, width, height), width, height);
+        const alphaMaskCol = getInversedImageData(ctx, division_btoc, width, height);
+        const alphaMask = getGrayImageData(ctx, alphaMaskCol, width, height);
         const colorDifferenceMask = getColorSelectiveMask(ctx, difference_card, width, height);
         const expandedDiffMask = getExpandedMask(ctx, colorDifferenceMask, width, height, 2);
         const expandedDiffMaskInv = getInversedImageData(ctx, expandedDiffMask, width, height);
@@ -251,6 +260,11 @@
         const alphaDiffMask = getMaskedImageData(ctx, getPlaneImageData(ctx, width, height, 255, 255, 255, 255), colorDifferenceMask, width, height);
         const coveredAlphaMask = compoundImageDataNormal(ctx, alphaexpandedDiffMask, alphaMask, width, height);
         const resultMask = compoundImageDataNormal(ctx, alphaDiffMask, coveredAlphaMask, width, height);
+        /*
+        const back_div = compoundImageData(ctx, multiply, back_a, alphaMaskCol, width, height);
+        const subRtoback = compoundImageData(ctx, subtraction, card_a, back_div, width, height);
+        const division_color = compoundImageData(ctx, division, subRtoback, division_btoc, width, height);
+        const division_color_gray = getGrayImageDataMin(ctx, division_color,width, height);*/
         const result = getMaskedImageData(ctx, card_a, resultMask, width, height);
         return result;
     };
@@ -267,7 +281,7 @@
         const coveredAlphaMask = compoundImageDataNormal(ctx, alphaexpandedDiffMask, alphaMask, width, height);
         const resultMask = compoundImageDataNormal(ctx, alphaDiffMask, coveredAlphaMask, width, height);
         const resultMaskInverse = getInversedImageData(ctx, resultMask, width, height);
-        return alphaMask;
+        return resultMaskInverse;
     };
     const getCardSizeMaskedImageData = function (ctx, imageData, w, h, r) {
         let color = "#FFFFFF";
@@ -357,15 +371,28 @@
             for (let image of images) {
                 const width = image.naturalWidth;
                 const height = image.naturalHeight;
-                let x = 40; let y = 36; let w = 800; let h = 960; let r = 19;
-                if (width == 1280) {
-                    x = 27; y = 24; w = 533; h = 640; r = 13;
-                }
                 const canvas = document.createElement("canvas");
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext("2d");
-                const trimedImageData = getTrimedImageData(ctx, createImageData(ctx, image, width, height), width, height, x, y, w, h)
+                const imageData = createImageData(ctx, image, width, height);
+
+                const isRotomi = ((length) => {
+                    return length < 20; 
+                })(Math.hypot(imageData.data[0] - 246, imageData.data[1] - 237, imageData.data[2] - 240));
+
+                let x = 268; let y = 40; let w = 800; let h = 960; let r = 19;
+                if(isRotomi) {
+                    x = 40; y = 36; w = 800; h = 960; r = 19;
+                }
+                if (width == 1280) {
+                    x = 179; y = 27; w = 533; h = 640; r = 14;
+                    if(isRotomi) {
+                        x = 27; y = 24; w = 533; h = 640; r = 13;
+                    }
+                }
+
+                const trimedImageData = getTrimedImageData(ctx, imageData, width, height, x, y, w, h)
                 const cardImageData = getCardSizeMaskedImageData(ctx, trimedImageData, w, h, r);
                 canvas.width = w;
                 canvas.height = h;
