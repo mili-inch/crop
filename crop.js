@@ -136,6 +136,22 @@
         }
         return imageData_dst;
     }
+    //不透明領域でマスク作成
+    const getOpacityMask = function (ctx, imageData, width, height) {
+        let x, y, i;
+        let imageData_dst = ctx.createImageData(width, height);
+        for (y = 0; y < height; y++) {
+            for (x = 0; x < width; x++) {
+                i = (x + y * width) * 4;
+                let col = imageData.data[i + 3] > 0 ? 255 : 0;
+                imageData_dst.data[i] = col;
+                imageData_dst.data[i + 1] = col;
+                imageData_dst.data[i + 2] = col;
+                imageData_dst.data[i + 3] = 255;
+            }
+        }
+        return imageData_dst;
+    }
     //選択部分の膨張
     const getExpandedMask = function (ctx, imageData, width, height, degree) {
         let x, y, i;
@@ -157,6 +173,40 @@
         }
         return imageData_dst;
     };
+    //メディアンフィルタ
+    //濃度に対して掛けるけど、RGBについて掛けたらどうなるんでしょうね
+    const getMedianFilteredImageData = function (ctx, imageData, width, height, range) {
+        let x, y, i;
+        let imageData_dst = ctx.createImageData(width, height);
+        for (y = 0; y < height; y++) {
+            for (x = 0; x < width; x++) {
+                i = (x + y * width) * 4;
+                const arr = [];
+                for (let dx = -range; dx < range + 1; dx++) {
+                    for (let dy = -range; dy < range + 1; dy++) {
+                        let l = (x + dx + (y + dy) * width) * 4;
+                        arr.push(imageData.data[l]);
+                    }
+                }
+                arr.sort((a, b) => {
+                    return a - b;
+                });
+                const half = Math.floor(arr.length / 2);
+                if (arr.length % 2) {
+                    imageData_dst.data[i] = arr[half];
+                    imageData_dst.data[i + 1] = arr[half];
+                    imageData_dst.data[i + 2] = arr[half];
+                    imageData_dst.data[i + 3] = 255;
+                } else {
+                    imageData_dst.data[i] = Math.round((arr[half - 1] + arr[half]) / 2);
+                    imageData_dst.data[i + 1] = Math.round((arr[half - 1] + arr[half]) / 2);
+                    imageData_dst.data[i + 2] = Math.round((arr[half - 1] + arr[half]) / 2);
+                    imageData_dst.data[i + 3] = 255;
+                }
+            }
+        }
+        return imageData_dst;
+    }
     //反転（α最大）
     const getInversedImageData = function (ctx, imageData, width, height) {
         let x, y, i;
@@ -246,8 +296,15 @@
         }
         return imageData_dst;
     }
+    const getStickeredImageData = function (ctx, imageData, width, height, expandWidth) {
+        const opacity = getOpacityMask(ctx, imageData, width, height);
+        const expanded = getExpandedMask(ctx, opacity, width, height, expandWidth);
+        const compounded = compoundImageDataNormal(ctx, imageData, expanded, width, height);
+        const applied = getMaskedImageData(ctx, compounded, expanded, width, height);
+        return applied;
 
-    const getCroppedImageData = function (ctx, card_a, card_b, back_a, back_b, width, height) {
+    }
+    const getCroppedImageData = function (ctx, card_a, card_b, back_a, back_b, width, height, correct = false) {
         const difference_card = compoundImageData(ctx, difference, card_a, card_b, width, height);
         const difference_back = compoundImageData(ctx, difference, back_a, back_b, width, height);
         const division_btoc = compoundImageData(ctx, division, difference_back, difference_card, width, height);
@@ -259,7 +316,10 @@
         const alphaexpandedDiffMask = getMaskedImageData(ctx, getPlaneImageData(ctx, width, height, 0, 0, 0, 255), expandedDiffMaskInv, width, height);
         const alphaDiffMask = getMaskedImageData(ctx, getPlaneImageData(ctx, width, height, 255, 255, 255, 255), colorDifferenceMask, width, height);
         const coveredAlphaMask = compoundImageDataNormal(ctx, alphaexpandedDiffMask, alphaMask, width, height);
-        const resultMask = compoundImageDataNormal(ctx, alphaDiffMask, coveredAlphaMask, width, height);
+        let resultMask = compoundImageDataNormal(ctx, alphaDiffMask, coveredAlphaMask, width, height);
+        if (correct) {
+            resultMask = getMedianFilteredImageData(ctx, resultMask, width, height, 3);
+        }
         /*
         const back_div = compoundImageData(ctx, multiply, back_a, alphaMaskCol, width, height);
         const subRtoback = compoundImageData(ctx, subtraction, card_a, back_div, width, height);
@@ -268,7 +328,7 @@
         const result = getMaskedImageData(ctx, card_a, resultMask, width, height);
         return result;
     };
-    const getMaskImageData = function (ctx, card_a, card_b, back_a, back_b, width, height) {
+    const getMaskImageData = function (ctx, card_a, card_b, back_a, back_b, width, height, correct = false) {
         const difference_card = compoundImageData(ctx, difference, card_a, card_b, width, height);
         const difference_back = compoundImageData(ctx, difference, back_a, back_b, width, height);
         const division_btoc = compoundImageData(ctx, division, difference_back, difference_card, width, height);
@@ -280,7 +340,11 @@
         const alphaDiffMask = getMaskedImageData(ctx, getPlaneImageData(ctx, width, height, 255, 255, 255, 255), colorDifferenceMask, width, height);
         const coveredAlphaMask = compoundImageDataNormal(ctx, alphaexpandedDiffMask, alphaMask, width, height);
         const resultMask = compoundImageDataNormal(ctx, alphaDiffMask, coveredAlphaMask, width, height);
-        const resultMaskInverse = getInversedImageData(ctx, resultMask, width, height);
+        let resultMaskInverse = getInversedImageData(ctx, resultMask, width, height);
+        resultMaskInverse = getGrayImageData(ctx, resultMaskInverse, width, height);
+        if (correct) {
+            resultMaskInverse = getMedianFilteredImageData(ctx, resultMaskInverse, width, height, 3);
+        }
         return resultMaskInverse;
     };
     const getCardSizeMaskedImageData = function (ctx, imageData, w, h, r) {
@@ -362,6 +426,29 @@
             }
         }
 
+        if (selected == "sticker") {
+            if (images.length == 0) {
+                alert("画像がありません");
+                return;
+            }
+            frame_results.textContent = null;
+            for (let image of images) {
+                const width = image.naturalWidth;
+                const height = image.naturalHeight;
+                const canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                const imageData = createImageData(ctx, image, width, height);
+
+                let backPx = 10
+
+                const stickerImageData = getStickeredImageData(ctx, imageData, width, height, backPx);
+                ctx.putImageData(stickerImageData, 0, 0);
+                frame_results.appendChild(canvas);
+                addDownloadLink(frame_results, canvas);
+            }
+        }
         if (selected == "trim") {
             if (images.length == 0) {
                 alert("画像がありません");
@@ -378,16 +465,16 @@
                 const imageData = createImageData(ctx, image, width, height);
 
                 const isRotomi = ((length) => {
-                    return length < 20; 
+                    return length < 20;
                 })(Math.hypot(imageData.data[0] - 246, imageData.data[1] - 237, imageData.data[2] - 240));
 
                 let x = 268; let y = 40; let w = 800; let h = 960; let r = 19;
-                if(isRotomi) {
+                if (isRotomi) {
                     x = 40; y = 36; w = 800; h = 960; r = 19;
                 }
                 if (width == 1280) {
                     x = 179; y = 27; w = 533; h = 640; r = 14;
-                    if(isRotomi) {
+                    if (isRotomi) {
                         x = 27; y = 24; w = 533; h = 640; r = 13;
                     }
                 }
@@ -424,6 +511,33 @@
                 const card_a = createImageData(ctx, images[i], width, height);
                 const card_b = createImageData(ctx, images[i + 1], width, height);
                 const croppedImageData = getCroppedImageData(ctx, card_a, card_b, back_a, back_b, width, height);
+                ctx.putImageData(croppedImageData, 0, 0);
+                frame_results.appendChild(canvas);
+                addDownloadLink(frame_results, canvas);
+            }
+        }
+        if (selected == "crop_noize") {
+            if (images.length < 4 || images.length % 2 != 0) {
+                alert("画像の数が不正です 背景を二枚とカードを偶数枚指定してください");
+                return;
+            }
+            if (!images.some(x => x.naturalWidth == images[0].naturalWidth)) {
+                alert("サイズの異なる画像が含まれています");
+                return;
+            }
+            frame_results.textContent = null;
+            const width = images[0].naturalWidth;
+            const height = images[0].naturalHeight;
+            for (let i = 2; i + 1 < images.length; i += 2) {
+                const canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                const back_a = createImageData(ctx, images[0], width, height);
+                const back_b = createImageData(ctx, images[1], width, height);
+                const card_a = createImageData(ctx, images[i], width, height);
+                const card_b = createImageData(ctx, images[i + 1], width, height);
+                const croppedImageData = getCroppedImageData(ctx, card_a, card_b, back_a, back_b, width, height, true);
                 ctx.putImageData(croppedImageData, 0, 0);
                 frame_results.appendChild(canvas);
                 addDownloadLink(frame_results, canvas);
