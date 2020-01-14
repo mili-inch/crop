@@ -174,7 +174,6 @@
         return imageData_dst;
     };
     //メディアンフィルタ
-    //濃度に対して掛けるけど、RGBについて掛けたらどうなるんでしょうね
     const getMedianFilteredImageData = function (ctx, imageData, width, height, range) {
         let x, y, i;
         let imageData_dst = ctx.createImageData(width, height);
@@ -236,6 +235,21 @@
                 imageData_dst.data[i + 1] = imageData.data[i + 1];
                 imageData_dst.data[i + 2] = imageData.data[i + 2];
                 imageData_dst.data[i + 3] = mask.data[i];
+            }
+        }
+        return imageData_dst;
+    };
+    //アルファ移植
+    const getAlphaedImageData = function (ctx, imageData, alpha, width, height) {
+        let x, y, i;
+        let imageData_dst = ctx.createImageData(width, height);
+        for (y = 0; y < height; y++) {
+            for (x = 0; x < width; x++) {
+                i = (x + y * width) * 4;
+                imageData_dst.data[i] = imageData.data[i];
+                imageData_dst.data[i + 1] = imageData.data[i + 1];
+                imageData_dst.data[i + 2] = imageData.data[i + 2];
+                imageData_dst.data[i + 3] = alpha.data[i + 3];
             }
         }
         return imageData_dst;
@@ -318,7 +332,7 @@
         const coveredAlphaMask = compoundImageDataNormal(ctx, alphaexpandedDiffMask, alphaMask, width, height);
         let resultMask = compoundImageDataNormal(ctx, alphaDiffMask, coveredAlphaMask, width, height);
         if (correct) {
-            resultMask = getMedianFilteredImageData(ctx, resultMask, width, height, 3);
+            resultMask = getMedianFilteredImageData(ctx, resultMask, width, height, 4);
         }
         /*
         const back_div = compoundImageData(ctx, multiply, back_a, alphaMaskCol, width, height);
@@ -343,7 +357,7 @@
         let resultMaskInverse = getInversedImageData(ctx, resultMask, width, height);
         resultMaskInverse = getGrayImageData(ctx, resultMaskInverse, width, height);
         if (correct) {
-            resultMaskInverse = getMedianFilteredImageData(ctx, resultMaskInverse, width, height, 3);
+            resultMaskInverse = getMedianFilteredImageData(ctx, resultMaskInverse, width, height, 4);
         }
         return resultMaskInverse;
     };
@@ -445,6 +459,28 @@
 
                 const stickerImageData = getStickeredImageData(ctx, imageData, width, height, backPx);
                 ctx.putImageData(stickerImageData, 0, 0);
+                frame_results.appendChild(canvas);
+                addDownloadLink(frame_results, canvas);
+            }
+        }
+        if (selected == "gori") {
+            if (images.length < 2 || images.length % 2 != 0) {
+                alert("画像の数が不正です 透過前の画像と透過済みの画像を順番に指定してください");
+                return;
+            }
+            frame_results.textContent = null;
+            for (let i = 0; i + 1 < images.length; i += 2) {
+                const canvas = document.createElement("canvas");
+                let dw, dh, aw, ah;
+                [dw, dh, aw, ah] = [images[i].naturalWidth, images[i].naturalHeight, images[i + 1].naturalWidth, images[i + 1].naturalHeight];
+                canvas.width = dw;
+                canvas.height = dh;
+                const ctx = canvas.getContext("2d");
+                const alphaCard = createImageData(ctx, images[i + 1], aw, ah);
+                const colorCard = createImageData(ctx, images[i], dw, dh);
+                const expandedImageData = bicubic(ctx, alphaCard, aw, ah, dw / aw);
+                const alphaedImageData = getAlphaedImageData(ctx, colorCard, expandedImageData, dw, dh);
+                ctx.putImageData(alphaedImageData, 0, 0);
                 frame_results.appendChild(canvas);
                 addDownloadLink(frame_results, canvas);
             }
