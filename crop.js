@@ -430,7 +430,12 @@
         onFileSelected(e.dataTransfer.files);
     });
 
+    let imageCount = 0;
+    let imageDate;
+
     const onSubmit = function (e) {
+        imageCount = 0;
+        imageDate = new Date();
         let selected = "";
         const images = Array.prototype.slice.call(frame_previews.children);
         for (let checked of buttons_mode) {
@@ -613,10 +618,20 @@
     document.getElementById("bash").addEventListener("click", onSubmit, false);
 
     const addDownloadLink = (parent, canvas) => {
+        const toDD = function (num) {
+            num += "";
+            if (num.length === 1) {
+                num = "0" + num;
+            }
+            return num;
+        }
         const link_download = document.createElement("a");
         const button_download = document.createElement("button");
         button_download.textContent = "ダウンロード";
-        const filename = "leaguecard.png";
+        let date = imageDate;
+        let filename = "card_";
+        filename += date.getFullYear() + "" + toDD(date.getMonth() + 1) + "" + toDD(date.getDate()) + "_" + toDD(date.getHours()) + "" + toDD(date.getMinutes()) + "" + toDD(date.getSeconds()) + "_" + imageCount + ".png";
+        imageCount++;
         button_download.addEventListener("click", function () {
             if (canvas.msToBlob) {
                 let blob = canvas.msToBlob();
